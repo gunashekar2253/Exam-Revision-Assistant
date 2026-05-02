@@ -1,9 +1,4 @@
-"""
-RAG Tool — Session-aware retrieval from FAISS vector store.
-
-This is a pure retrieval tool — no LLM calls happen here.
-Agents use this to fetch grounding context before generating content.
-"""
+# RAG tool — retrieves relevant context from FAISS
 
 import logging
 from core.config import get_settings
@@ -14,47 +9,23 @@ logger = logging.getLogger(__name__)
 
 
 def retrieve_context(query: str, session_id: str, k: int | None = None) -> list[str]:
-    """
-    Retrieve the top-k most relevant text chunks for a given query.
-
-    Args:
-        query: The user's query or topic.
-        session_id: Which session's index to search.
-        k: Number of chunks to retrieve (defaults to config value).
-
-    Returns:
-        List of relevant text chunks, ordered by similarity.
-    """
+    """Get top-k relevant chunks for a query from the session's index."""
     settings = get_settings()
     k = k or settings.rag_top_k
 
-    logger.info(f"[{session_id}] RAG retrieval: query='{query[:80]}...', k={k}")
+    logger.info(f"[{session_id}] RAG: query='{query[:80]}...', k={k}")
 
-    # Embed the query
     query_embedding = embed_query(query)
-
-    # Search session's FAISS index
     chunks = search(query_embedding, k=k, session_id=session_id)
 
-    logger.info(f"[{session_id}] Retrieved {len(chunks)} context chunks")
+    logger.info(f"[{session_id}] Retrieved {len(chunks)} chunks")
     return chunks
 
 
 def format_context(chunks: list[str]) -> str:
-    """
-    Format retrieved chunks into a single context string for LLM prompts.
-
-    Args:
-        chunks: List of text chunks from retrieval.
-
-    Returns:
-        Formatted context string with chunk separators.
-    """
+    """Format chunks into a single string for the LLM prompt."""
     if not chunks:
         return "No relevant context found in the uploaded documents."
 
-    formatted = []
-    for i, chunk in enumerate(chunks, 1):
-        formatted.append(f"[Context {i}]\n{chunk}")
-
+    formatted = [f"[Context {i}]\n{chunk}" for i, chunk in enumerate(chunks, 1)]
     return "\n\n---\n\n".join(formatted)

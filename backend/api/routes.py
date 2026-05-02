@@ -1,13 +1,4 @@
-"""
-API Routes — Session-aware FastAPI endpoints.
-
-Endpoints:
-  POST /upload          → Upload a document (auto-creates or appends to session)
-  POST /query           → Query the AI study assistant within a session
-  POST /reset-session   → Clear all data for a session
-  GET  /health          → Health check + index stats
-  GET  /supported-formats → List supported file types
-"""
+# API routes — upload, query, reset, health
 
 import uuid
 import shutil
@@ -26,75 +17,59 @@ from services.ingestion.indexer import build_index, get_index_stats, clear_sessi
 import agents.orchestrator as orchestrator
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
 
-# ── Upload Endpoint ─────────────────────────────────────────────
-
-
-@router.post(
-    "/upload",
-    response_model=UploadResponse,
-    summary="Upload a document for processing",
-    description="Upload a file. If no session_id is provided, a new session is created. If a session_id is provided, the document is appended to that session's index.",
-)
+@router.post("/upload", response_model=UploadResponse, summary="Upload a document")
 async def upload_document(
     file: UploadFile = File(...),
     session_id: str = Form(default=""),
 ):
-    """Process an uploaded document through the ingestion pipeline."""
+    """Process a document through the ingestion pipeline."""
     try:
-        # Auto-generate session_id if not provided (first upload)
+        # Auto-create session if none provided
         if not session_id or not session_id.strip():
             session_id = str(uuid.uuid4())
-            logger.info(f"New session created: {session_id}")
+            logger.info(f"New session: {session_id}")
 
-        # Validate file
         if not file.filename:
             raise HTTPException(status_code=400, detail="No filename provided")
 
-        logger.info(f"[{session_id}] Upload received: {file.filename}")
+        logger.info(f"[{session_id}] Upload: {file.filename}")
 
-        # Read file bytes
         file_bytes = await file.read()
         if not file_bytes:
-            raise HTTPException(status_code=400, detail="Empty file uploaded")
+            raise HTTPException(status_code=400, detail="Empty file")
 
-        # Step 1: Extract text
+        # Extract text
         try:
             text = extract_text(file_bytes, file.filename)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-        # Step 2: Check for duplicate filename in this session
+        # Check for duplicate filename
         uploads_dir = get_session_uploads_dir(session_id)
         save_path = uploads_dir / file.filename
         if save_path.exists():
             raise HTTPException(
                 status_code=409,
-                detail=f"'{file.filename}' already uploaded in this session. Reset session to re-upload."
+                detail=f"'{file.filename}' already uploaded. Reset session to re-upload."
             )
 
-        # Step 3: Chunk text
+        # Chunk -> embed -> index
         chunks = chunk_text(text)
         if not chunks:
-            raise HTTPException(status_code=400, detail="Could not create text chunks from document")
+            raise HTTPException(status_code=400, detail="Could not create chunks from document")
 
-        # Step 4: Embed chunks
         embeddings = embed_texts(chunks)
-
-        # Step 5: Build/append to session's FAISS index
         build_index(embeddings, chunks, session_id=session_id)
 
-        # Step 6: Save raw file to session's uploads/
+        # Save raw file
         with open(save_path, "wb") as f:
             f.write(file_bytes)
 
-        # Record in session state
         record_upload(file.filename, len(chunks), session_id=session_id)
-
-        logger.info(f"[{session_id}] Successfully processed '{file.filename}': {len(chunks)} chunks indexed")
+        logger.info(f"[{session_id}] Processed '{file.filename}': {len(chunks)} chunks")
 
         return UploadResponse(
             message=f"Successfully processed '{file.filename}'",
@@ -111,27 +86,13 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 
-# ── Query Endpoint ──────────────────────────────────────────────
-
-
-@router.post(
-    "/query",
-    response_model=QueryResponse,
-    summary="Query the AI study assistant",
-    description="Send a study query. The orchestrator classifies intent (quiz/flashcard/review), retrieves context from the session's index, and generates a response.",
-)
+@router.post("/query", response_model=QueryResponse, summary="Query the study assistant")
 async def query_handler(request: QueryRequest):
-    """Handle a study query through the orchestrator."""
+    """Classify intent and generate response."""
     try:
-        logger.info(f"[{request.session_id}] Query received: '{request.query[:80]}...'")
+        logger.info(f"[{request.session_id}] Query: '{request.query[:80]}...'")
 
-        # Run orchestrator — it classifies intent automatically
-        result = orchestrator.run(
-            query=request.query,
-            session_id=request.session_id,
-        )
-
-        # Record in session history
+        result = orchestrator.run(query=request.query, session_id=request.session_id)
         add_to_history(request.query, result.get("type", "unknown"), session_id=request.session_id)
 
         return QueryResponse(
@@ -144,78 +105,44 @@ async def query_handler(request: QueryRequest):
         )
 
     except RuntimeError as e:
-        logger.error(f"[{request.session_id}] Query failed: {e}")
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        logger.error(f"[{request.session_id}] Query failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
+        logger.error(f"Query failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
 
-# ── Reset Session Endpoint ──────────────────────────────────────
-
-
-@router.post(
-    "/reset-session",
-    response_model=ResetResponse,
-    summary="Reset a session",
-    description="Clear all data (index, uploads, history) for a specific session.",
-)
+@router.post("/reset-session", response_model=ResetResponse, summary="Reset a session")
 async def reset_session(request: ResetRequest):
     """Clear all data for a session."""
     try:
-        session_id = request.session_id
-        logger.info(f"[{session_id}] Resetting session...")
+        sid = request.session_id
+        logger.info(f"[{sid}] Resetting...")
 
-        # Clear FAISS index (memory + disk)
-        clear_session(session_id)
+        clear_session(sid)
 
-        # Clear uploaded files
-        session_dir = get_session_dir(session_id)
+        # Also clear uploaded files
+        session_dir = get_session_dir(sid)
         uploads_dir = session_dir / "uploads"
         if uploads_dir.exists():
             shutil.rmtree(uploads_dir)
             uploads_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"[{session_id}] Session reset complete")
-
-        return ResetResponse(
-            message=f"Session '{session_id}' has been reset",
-            session_id=session_id,
-        )
+        logger.info(f"[{sid}] Reset complete")
+        return ResetResponse(message=f"Session '{sid}' reset", session_id=sid)
 
     except Exception as e:
-        logger.error(f"Reset failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 
-# ── Health Endpoint ─────────────────────────────────────────────
-
-
-@router.get(
-    "/health",
-    response_model=HealthResponse,
-    summary="Health check",
-    description="Check if the API is running and get index statistics.",
-)
+@router.get("/health", response_model=HealthResponse, summary="Health check")
 async def health_check(session_id: str = "default"):
-    """Return health status and index stats for a session."""
     stats = get_index_stats(session_id=session_id)
-    return HealthResponse(
-        status="healthy",
-        index_stats=stats,
-    )
+    return HealthResponse(status="healthy", index_stats=stats)
 
 
-# ── Info Endpoint ───────────────────────────────────────────────
-
-
-@router.get(
-    "/supported-formats",
-    summary="List supported file formats",
-)
+@router.get("/supported-formats", summary="List supported file formats")
 async def supported_formats():
-    """Return list of supported upload file formats."""
     return {
         "supported_extensions": sorted(SUPPORTED_EXTENSIONS),
-        "description": "Upload any of these file types for processing",
+        "description": "Upload any of these file types",
     }

@@ -1,6 +1,4 @@
-"""
-Session State — In-memory storage for chat history and user progress.
-"""
+# Session state — tracks history and uploads per session (in-memory)
 
 import logging
 from datetime import datetime
@@ -25,7 +23,7 @@ def get_session(session_id: str = "default") -> dict:
 
 
 def add_to_history(query: str, response_type: str, session_id: str = "default") -> None:
-    """Record a query in the session history."""
+    """Record a query in session history."""
     session = get_session(session_id)
     with _lock:
         session["history"].append({
@@ -36,7 +34,7 @@ def add_to_history(query: str, response_type: str, session_id: str = "default") 
 
 
 def record_upload(filename: str, num_chunks: int, session_id: str = "default") -> None:
-    """Record a document upload in the session."""
+    """Record a file upload in the session."""
     session = get_session(session_id)
     with _lock:
         session["documents_uploaded"].append({

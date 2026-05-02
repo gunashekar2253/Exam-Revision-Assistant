@@ -1,29 +1,15 @@
-"""
-Document Loader — Extracts text from uploaded files.
-
-Supported formats:
-  - PDF  (.pdf)   → PyMuPDF (fitz)
-  - DOCX (.docx)  → python-docx
-  - TXT  (.txt)   → built-in open()
-  - MD   (.md)    → built-in open()
-
-Extensible: add new extractors by registering in EXTRACTORS dict.
-"""
+# Document loader — extracts text from uploaded files
 
 from pathlib import Path
-from typing import Union
 import io
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-# ── Individual extractors ──────────────────────────────────────
-
-
 def _extract_pdf(file_bytes: bytes) -> str:
-    """Extract text from PDF bytes using PyMuPDF."""
-    import fitz  # PyMuPDF
+    """Extract text from PDF using PyMuPDF."""
+    import fitz
 
     text_parts = []
     try:
@@ -33,38 +19,36 @@ def _extract_pdf(file_bytes: bytes) -> str:
             if page_text.strip():
                 text_parts.append(page_text)
             else:
-                logger.warning(f"Page {page_num + 1} yielded no text (may be scanned/image)")
+                logger.warning(f"Page {page_num + 1} has no text (might be scanned)")
         doc.close()
     except Exception as e:
-        raise ValueError(f"Failed to extract text from PDF: {e}")
+        raise ValueError(f"Failed to read PDF: {e}")
 
     return "\n\n".join(text_parts)
 
 
 def _extract_docx(file_bytes: bytes) -> str:
-    """Extract text from DOCX bytes using python-docx."""
+    """Extract text from DOCX using python-docx."""
     from docx import Document
 
     try:
         doc = Document(io.BytesIO(file_bytes))
         paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
     except Exception as e:
-        raise ValueError(f"Failed to extract text from DOCX: {e}")
+        raise ValueError(f"Failed to read DOCX: {e}")
 
     return "\n\n".join(paragraphs)
 
 
 def _extract_text(file_bytes: bytes) -> str:
-    """Extract text from plain text files (TXT, MD, etc.)."""
+    """Extract text from plain text files."""
     try:
         return file_bytes.decode("utf-8")
     except UnicodeDecodeError:
-        # Fallback to latin-1 which never fails
-        return file_bytes.decode("latin-1")
+        return file_bytes.decode("latin-1")  # fallback, never fails
 
 
-# ── Extractor registry ─────────────────────────────────────────
-
+# Map file extensions to their extractors
 EXTRACTORS = {
     ".pdf": _extract_pdf,
     ".docx": _extract_docx,
@@ -83,23 +67,8 @@ EXTRACTORS = {
 SUPPORTED_EXTENSIONS = set(EXTRACTORS.keys())
 
 
-# ── Public API ──────────────────────────────────────────────────
-
-
 def extract_text(file_bytes: bytes, filename: str) -> str:
-    """
-    Extract text from a file given its raw bytes and original filename.
-
-    Args:
-        file_bytes: Raw binary content of the uploaded file.
-        filename: Original filename (used to determine format).
-
-    Returns:
-        Extracted text as a single string.
-
-    Raises:
-        ValueError: If the file type is unsupported or extraction fails.
-    """
+    """Extract text from a file based on its extension."""
     ext = Path(filename).suffix.lower()
 
     if ext not in EXTRACTORS:
@@ -112,7 +81,7 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
     text = EXTRACTORS[ext](file_bytes)
 
     if not text.strip():
-        raise ValueError(f"No text content could be extracted from '{filename}'")
+        raise ValueError(f"No text content found in '{filename}'")
 
     logger.info(f"Extracted {len(text)} characters from '{filename}'")
     return text

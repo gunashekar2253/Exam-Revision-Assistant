@@ -1,9 +1,4 @@
-"""
-Text Chunker — Splits extracted text into semantically meaningful chunks.
-
-Uses LangChain's RecursiveCharacterTextSplitter for intelligent splitting
-that respects paragraph/sentence boundaries.
-"""
+# Text chunker — splits text into overlapping chunks
 
 import logging
 from core.config import get_settings
@@ -12,15 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def chunk_text(text: str) -> list[str]:
-    """
-    Split text into overlapping chunks for embedding.
-
-    Args:
-        text: Full extracted text from a document.
-
-    Returns:
-        List of text chunks.
-    """
+    """Split text into chunks for embedding."""
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
     settings = get_settings()
