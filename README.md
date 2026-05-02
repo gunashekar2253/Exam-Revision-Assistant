@@ -1,4 +1,4 @@
-# 📚 AI Study Assistant
+# AI Study Assistant
 
 A multi-agent AI backend + React frontend that turns uploaded documents into interactive **quizzes**, **flashcards**, and **study reviews** using RAG (Retrieval-Augmented Generation).
 
@@ -29,14 +29,14 @@ A multi-agent AI backend + React frontend that turns uploaded documents into int
 │  │ Index      │    │ Quiz│Flash│Rev│                        │
 │  └─────┬─────┘    └──────┬───────┘                          │
 │        │                 │                                  │
-│  ┌─────▼─────────────────▼───────┐    ┌──────────────────┐  │
-│  │     FAISS Vector Store         │    │   LLM Router    │  │
-│  │   (per-session isolation)      │    │ Groq → OpenRou  │  │
-│  └────────────────────────────────┘    └──────────────────┘  │
+│  ┌─────▼─────────────────▼───────┐   ┌──────────────────┐   │
+│  │     FAISS Vector Store        │   │   LLM Router     │   │
+│  │   (per-session isolation)     │   │ Groq → OpenRou   │   │
+│  └───────────────────────────────┘   └──────────────────┘   │
 │                                                             │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │              Gemini API (Embeddings)                    │  │
-│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              Gemini API (Embeddings)                   │ │
+│  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -51,7 +51,7 @@ A multi-agent AI backend + React frontend that turns uploaded documents into int
 | **Embeddings**| Google Gemini API             | Text → vector embeddings             |
 | **Vector DB** | FAISS (in-memory + disk)      | Similarity search for RAG retrieval  |
 | **LLM**       | Groq (primary)                | Fast inference (Llama 3.3 70B)       |
-| **LLM Fallback** | OpenRouter              | Automatic fallback if Groq fails     |
+| **LLM Fallback** | OpenRouter                 | Automatic fallback if Groq fails     |
 | **Doc Parsing**| PyMuPDF, python-docx         | PDF and DOCX text extraction         |
 | **Chunking**  | LangChain Text Splitters      | Recursive character-based splitting  |
 
