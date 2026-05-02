@@ -13,25 +13,25 @@ A multi-agent AI backend + React frontend that turns uploaded documents into int
 └──────────────────────────┬──────────────────────────────────┘
                            │ HTTP (REST)
 ┌──────────────────────────▼──────────────────────────────────┐
-│                    FastAPI Backend                           │
+│                    FastAPI Backend                          │
 │                                                             │
 │  ┌───────────┐    ┌──────────────┐    ┌──────────────────┐  │
-│  │  /upload   │    │  /query       │    │ /reset-session   │  │
+│  │  /upload  │    │  /query      │    │ /reset-session   │  │
 │  └─────┬─────┘    └──────┬───────┘    └──────────────────┘  │
-│        │                 │                                   │
+│        │                 │                                  │
 │  ┌─────▼─────┐    ┌──────▼───────┐                          │
-│  │ Ingestion  │    │ Orchestrator  │                          │
-│  │ Pipeline   │    │ (LLM Intent)  │                          │
-│  │            │    └──────┬───────┘                          │
-│  │ Extract    │           │                                  │
-│  │ Chunk      │    ┌──────▼───────┐                          │
-│  │ Embed      │    │  Task Agents  │                          │
-│  │ Index      │    │ Quiz│Flash│Rev│                          │
+│  │ Ingestion  │    │ Orchestrator  │                        │
+│  │ Pipeline   │    │ (LLM Intent)  │                        │
+│  │            │    └──────┬───────┘                         │
+│  │ Extract    │           │                                 │
+│  │ Chunk      │    ┌──────▼───────┐                         │
+│  │ Embed      │    │  Task Agents  │                        │
+│  │ Index      │    │ Quiz│Flash│Rev│                        │
 │  └─────┬─────┘    └──────┬───────┘                          │
-│        │                 │                                   │
+│        │                 │                                  │
 │  ┌─────▼─────────────────▼───────┐    ┌──────────────────┐  │
-│  │     FAISS Vector Store         │    │   LLM Router      │  │
-│  │   (per-session isolation)      │    │ Groq → OpenRouter  │  │
+│  │     FAISS Vector Store         │    │   LLM Router    │  │
+│  │   (per-session isolation)      │    │ Groq → OpenRou  │  │
 │  └────────────────────────────────┘    └──────────────────┘  │
 │                                                             │
 │  ┌────────────────────────────────────────────────────────┐  │
@@ -447,6 +447,4 @@ User Query → Groq (primary, fast)
 
 ---
 
-## License
 
-This project is for educational purposes.
