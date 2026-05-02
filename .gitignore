@@ -1,0 +1,30 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# === Environment (SECRETS) ===
+.env
+*.env.local
+
+# === Data (per-session indexes & uploads) ===
+backend/data/sessions/
+backend/data/uploads/
+backend/data/index/
+backend/data/test_sample.txt
+
+# === Node/Frontend ===
+node_modules/
+frontend/dist/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === OS ===
+.DS_Store
+Thumbs.db
