@@ -2,22 +2,7 @@
 
 A multi-agent AI backend + React frontend that turns uploaded documents into interactive **quizzes**, **flashcards**, and **study reviews** using RAG (Retrieval-Augmented Generation).
 
----
 
-## Table of Contents
-
-- [Architecture Overview](#architecture-overview)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-- [Configuration](#configuration)
-- [Running the Application](#running-the-application)
-- [API Reference](#api-reference)
-- [How It Works](#how-it-works)
-- [Session Management](#session-management)
-- [Error Handling & Fallbacks](#error-handling--fallbacks)
-
----
 
 ## Architecture Overview
 
